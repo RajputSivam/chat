@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DSA ChatBot</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --card: #1a1a26;
+      --border: #2a2a40;
+      --accent: #00e5ff;
+      --accent2: #7c3aed;
+      --accent3: #10b981;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --user-bubble: #1e1b4b;
+      --bot-bubble: #0f172a;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Header */
+    header {
+      position: relative;
+      z-index: 10;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10,10,15,0.9);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 16px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .header-info h1 {
+      font-size: 18px;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .header-info p {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      background: var(--accent3);
+      border-radius: 50%;
+      margin-left: auto;
+      box-shadow: 0 0 8px var(--accent3);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* Topic chips */
+    .topics-bar {
+      position: relative;
+      z-index: 10;
+      padding: 10px 24px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10,10,15,0.7);
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .topics-bar::-webkit-scrollbar { display: none; }
+
+    .topic-chip {
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--muted);
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .topic-chip:hover, .topic-chip.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0,229,255,0.08);
+    }
+
+    /* Chat area */
+    #chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+      z-index: 1;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    /* Welcome */
+    .welcome {
+      text-align: center;
+      padding: 40px 20px;
+      animation: fadeIn 0.6s ease;
+    }
+    .welcome h2 {
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    .welcome p {
+      color: var(--muted);
+      font-size: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 30px;
+    }
+
+    .quick-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .quick-btn {
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      text-align: left;
+    }
+    .quick-btn:hover {
+      border-color: var(--accent);
+      background: rgba(0,229,255,0.05);
+      transform: translateY(-2px);
+    }
+
+    /* Message bubbles */
+    .message {
+      display: flex;
+      gap: 10px;
+      animation: slideUp 0.3s ease;
+      max-width: 780px;
+    }
+    .message.user { flex-direction: row-reverse; align-self: flex-end; }
+    .message.bot { align-self: flex-start; }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .avatar {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+    }
+    .avatar.bot-av {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+    }
+    .avatar.user-av {
+      background: var(--accent2);
+      color: #fff;
+    }
+
+    .bubble {
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.7;
+      max-width: 600px;
+    }
+    .bot .bubble {
+      background: var(--bot-bubble);
+      border: 1px solid var(--border);
+      border-top-left-radius: 4px;
+    }
+    .user .bubble {
+      background: var(--user-bubble);
+      border: 1px solid rgba(124,58,237,0.4);
+      border-top-right-radius: 4px;
+    }
+
+    .bubble code {
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(0,229,255,0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--accent);
+    }
+    .bubble .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(16,185,129,0.15);
+      color: var(--accent3);
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 6px;
+    }
+    .bubble strong {
+      color: var(--accent);
+    }
+    .bubble ul {
+      padding-left: 16px;
+      margin-top: 6px;
+    }
+    .bubble ul li {
+      margin: 4px 0;
+      color: #94a3b8;
+    }
+    .bubble .complexity {
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.3);
+      border-left: 3px solid var(--accent);
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .bubble .complexity span { color: var(--accent3); }
+
+    /* Typing indicator */
+    .typing { display: flex; gap: 4px; padding: 4px 0; }
+    .typing span {
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: bounce 1s infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); opacity: 0.4; }
+      50% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* Input area */
+    .input-area {
+      position: relative;
+      z-index: 10;
+      padding: 16px 24px 20px;
+      border-top: 1px solid var(--border);
+      background: rgba(10,10,15,0.95);
+      backdrop-filter: blur(12px);
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    #user-input {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      resize: none;
+      outline: none;
+      transition: border-color 0.2s;
+      min-height: 48px;
+      max-height: 120px;
+    }
+    #user-input:focus { border-color: var(--accent); }
+    #user-input::placeholder { color: var(--muted); }
+
+    #send-btn {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+    #send-btn:hover { transform: scale(1.05); }
+    #send-btn:active { transform: scale(0.95); }
+    #send-btn svg { width: 20px; height: 20px; fill: #fff; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; } to { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">D/</div>
+  <div class="header-info">
+    <h1>DSA ChatBot</h1>
+    <p>Powered by local knowledge base • No API required</p>
+  </div>
+  <div class="status-dot"></div>
+</header>
+
+<div class="topics-bar">
+  <div class="topic-chip active" onclick="filterTopic('all')">All Topics</div>
+  <div class="topic-chip" onclick="filterTopic('array')">Arrays</div>
+  <div class="topic-chip" onclick="filterTopic('linkedlist')">Linked List</div>
+  <div class="topic-chip" onclick="filterTopic('tree')">Trees</div>
+  <div class="topic-chip" onclick="filterTopic('graph')">Graphs</div>
+  <div class="topic-chip" onclick="filterTopic('dp')">Dynamic Programming</div>
+  <div class="topic-chip" onclick="filterTopic('sorting')">Sorting</div>
+  <div class="topic-chip" onclick="filterTopic('searching')">Searching</div>
+  <div class="topic-chip" onclick="filterTopic('stack')">Stack & Queue</div>
+  <div class="topic-chip" onclick="filterTopic('hashing')">Hashing</div>
+  <div class="topic-chip" onclick="filterTopic('recursion')">Recursion</div>
+  <div class="topic-chip" onclick="filterTopic('string')">Strings</div>
+</div>
+
+<div id="chat-container">
+  <div class="welcome" id="welcome-screen">
+    <h2>Hey! Ask me anything about DSA 👋</h2>
+    <p>// local knowledge base • arrays • trees • graphs • dp • sorting • more</p>
+    <div class="quick-btns">
+      <button class="quick-btn" onclick="sendQuick('What is Binary Search?')">🔍 Binary Search kya hai?</button>
+      <button class="quick-btn" onclick="sendQuick('Explain Dynamic Programming')">🧠 Dynamic Programming explain karo</button>
+      <button class="quick-btn" onclick="sendQuick('How does Quick Sort work?')">⚡ Quick Sort kaise kaam karta hai?</button>
+      <button class="quick-btn" onclick="sendQuick('What is a Binary Tree?')">🌳 Binary Tree kya hota hai?</button>
+      <button class="quick-btn" onclick="sendQuick('Difference between Stack and Queue')">📦 Stack vs Queue difference</button>
+      <button class="quick-btn" onclick="sendQuick('What is BFS and DFS?')">🗺️ BFS aur DFS kya hai?</button>
+    </div>
+  </div>
+</div>
+
+<div class="input-area">
+  <div class="input-row">
+    <textarea id="user-input" rows="1" placeholder="DSA ke baare mein kuch bhi poocho... (e.g. 'merge sort explain karo')"></textarea>
+    <button id="send-btn" onclick="sendMessage()">
+      <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+// ==================== LOCAL KNOWLEDGE BASE ====================
+const KB = {
+  "binary search": {
+    tag: "Searching Algorithm",
+    title: "Binary Search",
+    body: `Binary Search ek <strong>divide and conquer</strong> algorithm hai jo <strong>sorted array</strong> mein element dhundhta hai.<br><br>
+    Kaise kaam karta hai:<br>
+    <ul>
+      <li>Middle element check karo</li>
+      <li>Agar target < middle → left half mein jao</li>
+      <li>Agar target > middle → right half mein jao</li>
+      <li>Jab tak element mile ya array khatam ho</li>
+    </ul>
+    <code>mid = left + (right - left) / 2</code>`,
+    complexity: "Time: O(log n) | Space: O(1)"
+  },
+  "linear search": {
+    tag: "Searching Algorithm",
+    title: "Linear Search",
+    body: `Linear Search har element ko <strong>ek ek karke</strong> check karta hai jab tak target na mile.<br><br>
+    Simple but slow — unsorted arrays ke liye useful.`,
+    complexity: "Time: O(n) | Space: O(1)"
+  },
+  "bubble sort": {
+    tag: "Sorting Algorithm",
+    title: "Bubble Sort",
+    body: `Bubble Sort adjacent elements ko compare karke <strong>swap</strong> karta hai agar wo galat order mein hon.<br><br>
+    <ul>
+      <li>Outer loop: n-1 passes</li>
+      <li>Inner loop: adjacent compare & swap</li>
+      <li>Har pass mein bada element end pe aa jaata hai</li>
+    </ul>`,
+    complexity: "Time: O(n²) | Space: O(1)"
+  },
+  "quick sort": {
+    tag: "Sorting Algorithm",
+    title: "Quick Sort",
+    body: `Quick Sort <strong>pivot</strong> choose karke array ko 2 parts mein divide karta hai.<br><br>
+    Steps:<br>
+    <ul>
+      <li>Pivot select karo (usually last element)</li>
+      <li>Partition: pivot se chhote left, bade right</li>
+      <li>Recursively dono halves sort karo</li>
+    </ul>
+    Real world mein sabse fast sorting algorithm!`,
+    complexity: "Time: O(n log n) avg, O(n²) worst | Space: O(log n)"
+  },
+  "merge sort": {
+    tag: "Sorting Algorithm",
+    title: "Merge Sort",
+    body: `Merge Sort array ko <strong>ek ek element</strong> tak divide karta hai, phir sorted merge karta hai.<br><br>
+    <ul>
+      <li>Divide: array ko half karo</li>
+      <li>Conquer: recursively sort karo</li>
+      <li>Merge: 2 sorted arrays ko combine karo</li>
+    </ul>
+    Stable sort — large datasets ke liye best!`,
+    complexity: "Time: O(n log n) | Space: O(n)"
+  },
+  "selection sort": {
+    tag: "Sorting Algorithm",
+    title: "Selection Sort",
+    body: `Selection Sort har iteration mein <strong>minimum element</strong> dhundh ke sahi jagah rakhta hai.<br><br>
+    <ul>
+      <li>Unsorted part se minimum find karo</li>
+      <li>First unsorted position pe swap karo</li>
+      <li>Repeat till sorted</li>
+    </ul>`,
+    complexity: "Time: O(n²) | Space: O(1)"
+  },
+  "insertion sort": {
+    tag: "Sorting Algorithm",
+    title: "Insertion Sort",
+    body: `Insertion Sort ek element uthata hai aur <strong>sahi jagah insert</strong> karta hai sorted portion mein.<br><br>
+    Playing cards sort karne jaisa!<br>
+    <ul>
+      <li>Small arrays ke liye efficient</li>
+      <li>Nearly sorted data pe best performance</li>
+    </ul>`,
+    complexity: "Time: O(n²) worst, O(n) best | Space: O(1)"
+  },
+  "dynamic programming": {
+    tag: "Technique",
+    title: "Dynamic Programming (DP)",
+    body: `DP ek technique hai jisme <strong>subproblems ke results</strong> store karke reuse karte hain.<br><br>
+    2 approaches:<br>
+    <ul>
+      <li><strong>Memoization</strong> (Top-Down): Recursion + cache</li>
+      <li><strong>Tabulation</strong> (Bottom-Up): Iterative table fill</li>
+    </ul>
+    Famous problems: Fibonacci, Knapsack, LCS, Coin Change, Longest Increasing Subsequence`,
+    complexity: "Varies per problem — generally O(n²) ya O(n*m)"
+  },
+  "linked list": {
+    tag: "Data Structure",
+    title: "Linked List",
+    body: `Linked List ek <strong>linear data structure</strong> hai jisme nodes pointers se connected hote hain.<br><br>
+    Types:<br>
+    <ul>
+      <li><strong>Singly</strong>: next pointer only</li>
+      <li><strong>Doubly</strong>: next + prev pointer</li>
+      <li><strong>Circular</strong>: last node points to first</li>
+    </ul>
+    Array se fast insertion/deletion, slow random access.`,
+    complexity: "Access: O(n) | Insert/Delete head: O(1)"
+  },
+  "binary tree": {
+    tag: "Data Structure",
+    title: "Binary Tree",
+    body: `Binary Tree mein har node ke <strong>max 2 children</strong> hote hain — left aur right.<br><br>
+    Traversals:<br>
+    <ul>
+      <li><strong>Inorder</strong>: Left → Root → Right</li>
+      <li><strong>Preorder</strong>: Root → Left → Right</li>
+      <li><strong>Postorder</strong>: Left → Right → Root</li>
+    </ul>
+    BST mein: left < root < right`,
+    complexity: "Search/Insert BST: O(log n) avg, O(n) worst"
+  },
+  "stack": {
+    tag: "Data Structure",
+    title: "Stack",
+    body: `Stack <strong>LIFO</strong> (Last In First Out) follow karta hai — jaise plates ki stack.<br><br>
+    Operations:<br>
+    <ul>
+      <li><code>push()</code> — element add karo top pe</li>
+      <li><code>pop()</code> — top element remove karo</li>
+      <li><code>peek()</code> — top element dekho</li>
+    </ul>
+    Use cases: undo/redo, balanced parentheses, recursion call stack`,
+    complexity: "All operations: O(1)"
+  },
+  "queue": {
+    tag: "Data Structure",
+    title: "Queue",
+    body: `Queue <strong>FIFO</strong> (First In First Out) follow karta hai — jaise line mein log.<br><br>
+    Operations:<br>
+    <ul>
+      <li><code>enqueue()</code> — rear pe add karo</li>
+      <li><code>dequeue()</code> — front se remove karo</li>
+    </ul>
+    Use cases: BFS, printer queue, CPU scheduling`,
+    complexity: "All operations: O(1)"
+  },
+  "stack vs queue": {
+    tag: "Comparison",
+    title: "Stack vs Queue",
+    body: `<strong>Stack (LIFO)</strong> vs <strong>Queue (FIFO)</strong>:<br><br>
+    <ul>
+      <li>Stack: Last in, first out | Queue: First in, first out</li>
+      <li>Stack: Ek end se operations | Queue: Dono ends se</li>
+      <li>Stack: DFS, recursion | Queue: BFS, scheduling</li>
+      <li>Stack: push/pop | Queue: enqueue/dequeue</li>
+    </ul>`,
+    complexity: "Dono mein: O(1) operations"
+  },
+  "bfs": {
+    tag: "Graph Algorithm",
+    title: "BFS — Breadth First Search",
+    body: `BFS graph/tree ko <strong>level by level</strong> traverse karta hai.<br><br>
+    Steps:<br>
+    <ul>
+      <li>Start node ko queue mein daalo</li>
+      <li>Dequeue karo, neighbors enqueue karo</li>
+      <li>Visited set rakho</li>
+    </ul>
+    Use: Shortest path (unweighted), level order traversal`,
+    complexity: "Time: O(V+E) | Space: O(V)"
+  },
+  "dfs": {
+    tag: "Graph Algorithm",
+    title: "DFS — Depth First Search",
+    body: `DFS ek path ko <strong>jitna deep ho sake</strong> explore karta hai phir backtrack karta hai.<br><br>
+    Steps:<br>
+    <ul>
+      <li>Stack (ya recursion) use karo</li>
+      <li>Visit karo, recursively neighbors explore karo</li>
+      <li>Backtrack when stuck</li>
+    </ul>
+    Use: Cycle detection, topological sort, maze solving`,
+    complexity: "Time: O(V+E) | Space: O(V)"
+  },
+  "bfs dfs": {
+    tag: "Graph Algorithms",
+    title: "BFS aur DFS",
+    body: `<strong>BFS</strong> — Queue use karta hai, level by level explore karta hai. Shortest path ke liye perfect.<br><br>
+    <strong>DFS</strong> — Stack/recursion use karta hai, depth mein jaata hai. Backtracking problems ke liye best.<br><br>
+    <ul>
+      <li>BFS → Queue → Level order → Shortest path</li>
+      <li>DFS → Stack → Deep dive → Cycle/path detection</li>
+    </ul>`,
+    complexity: "Dono: O(V+E)"
+  },
+  "hashing": {
+    tag: "Data Structure",
+    title: "Hashing / Hash Table",
+    body: `Hash Table key-value pairs store karta hai <strong>hash function</strong> se fast access ke liye.<br><br>
+    <ul>
+      <li>Key → hash function → index</li>
+      <li>Collision handling: Chaining ya Open Addressing</li>
+      <li>Python mein: <code>dict</code> | Java mein: <code>HashMap</code></li>
+    </ul>
+    Use: Frequency count, two-sum problem, duplicate detection`,
+    complexity: "Average: O(1) | Worst: O(n)"
+  },
+  "recursion": {
+    tag: "Concept",
+    title: "Recursion",
+    body: `Recursion mein function <strong>khud ko hi call</strong> karta hai smaller input pe.<br><br>
+    2 zaroori cheezein:<br>
+    <ul>
+      <li><strong>Base Case</strong>: Rok ka condition (warna infinite loop!)</li>
+      <li><strong>Recursive Case</strong>: Problem chhota karke aage badhao</li>
+    </ul>
+    Example: Fibonacci, Factorial, Tree traversal, Tower of Hanoi`,
+    complexity: "Depends on problem — generally O(n) ya O(2ⁿ)"
+  },
+  "array": {
+    tag: "Data Structure",
+    title: "Array",
+    body: `Array <strong>contiguous memory</strong> mein same type ke elements store karta hai.<br><br>
+    Key operations:<br>
+    <ul>
+      <li>Access: O(1) — index se direct</li>
+      <li>Search: O(n) unsorted, O(log n) sorted</li>
+      <li>Insert/Delete: O(n) — shifting required</li>
+    </ul>
+    Common patterns: Two pointer, Sliding window, Prefix sum`,
+    complexity: "Access: O(1) | Insert/Delete: O(n)"
+  },
+  "graph": {
+    tag: "Data Structure",
+    title: "Graph",
+    body: `Graph nodes (vertices) aur edges ka collection hai.<br><br>
+    Types:<br>
+    <ul>
+      <li><strong>Directed</strong>: Edges ka direction hota hai</li>
+      <li><strong>Undirected</strong>: Bidirectional edges</li>
+      <li><strong>Weighted</strong>: Edges pe weight/cost</li>
+    </ul>
+    Representations: Adjacency Matrix, Adjacency List<br>
+    Algorithms: BFS, DFS, Dijkstra, Floyd-Warshall`,
+    complexity: "Depends on algorithm"
+  },
+  "heap": {
+    tag: "Data Structure",
+    title: "Heap",
+    body: `Heap ek <strong>complete binary tree</strong> hai jo heap property maintain karta hai.<br><br>
+    <ul>
+      <li><strong>Max Heap</strong>: Parent ≥ Children</li>
+      <li><strong>Min Heap</strong>: Parent ≤ Children</li>
+    </ul>
+    Use: Priority Queue, Heap Sort, Top-K problems<br>
+    Python mein: <code>heapq</code> module (min heap by default)`,
+    complexity: "Insert/Delete: O(log n) | Access min/max: O(1)"
+  },
+  "two pointer": {
+    tag: "Technique",
+    title: "Two Pointer Technique",
+    body: `Two Pointer mein <strong>2 index pointers</strong> use karte hain array traverse ke liye.<br><br>
+    Patterns:<br>
+    <ul>
+      <li>Opposite ends: Sorted array sum problems</li>
+      <li>Same direction: Sliding window, fast-slow</li>
+    </ul>
+    Use: Two Sum sorted, Remove duplicates, Palindrome check`,
+    complexity: "Time: O(n) | Space: O(1) — linear scan!"
+  },
+  "sliding window": {
+    tag: "Technique",
+    title: "Sliding Window",
+    body: `Sliding Window ek <strong>window</strong> maintain karta hai jo array pe slide karta hai.<br><br>
+    <ul>
+      <li>Fixed window: Size fixed hoti hai</li>
+      <li>Variable window: Condition ke basis pe grow/shrink</li>
+    </ul>
+    Use: Max subarray sum, Longest substring without repeat`,
+    complexity: "Time: O(n) | Space: O(1) ya O(k)"
+  }
+};
+
+// Keywords mapping
+const KEYWORDS = {
+  "binary search": ["binary search", "binary_search", "bsearch"],
+  "linear search": ["linear search", "sequential search"],
+  "bubble sort": ["bubble sort", "bubble_sort"],
+  "quick sort": ["quick sort", "quicksort", "quick_sort"],
+  "merge sort": ["merge sort", "mergesort", "merge_sort"],
+  "selection sort": ["selection sort"],
+  "insertion sort": ["insertion sort"],
+  "dynamic programming": ["dynamic programming", "dp", "memoization", "tabulation", "knapsack", "lcs"],
+  "linked list": ["linked list", "linkedlist", "singly linked", "doubly linked"],
+  "binary tree": ["binary tree", "bst", "binary search tree", "tree traversal", "inorder", "preorder", "postorder"],
+  "stack vs queue": ["stack vs queue", "stack aur queue", "stack and queue", "difference between stack"],
+  "stack": ["stack", "lifo", "push pop"],
+  "queue": ["queue", "fifo", "enqueue dequeue"],
+  "bfs dfs": ["bfs and dfs", "bfs aur dfs", "bfs dfs", "dfs bfs"],
+  "bfs": ["bfs", "breadth first", "level order"],
+  "dfs": ["dfs", "depth first"],
+  "hashing": ["hash", "hashing", "hashmap", "hashtable", "dictionary"],
+  "recursion": ["recursion", "recursive", "base case", "tower of hanoi"],
+  "array": ["array", "arrays", "two sum", "subarray"],
+  "graph": ["graph", "vertices", "edges", "dijkstra", "adjacency"],
+  "heap": ["heap", "priority queue", "min heap", "max heap"],
+  "two pointer": ["two pointer", "two pointers", "opposite ends"],
+  "sliding window": ["sliding window", "window", "subarray sum", "longest substring"]
+};
+
+function findAnswer(query) {
+  const q = query.toLowerCase().trim();
+  
+  // Direct match first
+  for (const [key, keywords] of Object.entries(KEYWORDS)) {
+    for (const kw of keywords) {
+      if (q.includes(kw)) {
+        return KB[key] || null;
+      }
+    }
+  }
+  return null;
+}
+
+function formatAnswer(data) {
+  return `<span class="tag">${data.tag}</span><br>
+  <strong>${data.title}</strong><br><br>
+  ${data.body}
+  <div class="complexity">⏱ Complexity — <span>${data.complexity}</span></div>`;
+}
+
+function fallbackAnswer(query) {
+  const topics = Object.values(KB).map(k => k.title);
+  const randomTips = [
+    "Arrays, Linked Lists, Trees, Graphs, Sorting, Searching",
+    "DP, Recursion, Hashing, Stack, Queue, Heap",
+    "Two Pointer, Sliding Window, BFS, DFS"
+  ];
+  return `Hmm, "<strong>${query}</strong>" ke baare mein mujhe directly pata nahi... 🤔<br><br>
+  Ye topics try karo:<br>
+  <ul>
+    ${randomTips.map(t => `<li>${t}</li>`).join('')}
+  </ul>
+  Ya upar ke chips click karo topic filter ke liye!`;
+}
+
+// ==================== UI LOGIC ====================
+let chatStarted = false;
+
+function filterTopic(topic) {
+  document.querySelectorAll('.topic-chip').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  if (topic !== 'all') {
+    const queries = { array: 'array', linkedlist: 'linked list', tree: 'binary tree', graph: 'graph', dp: 'dynamic programming', sorting: 'quick sort', searching: 'binary search', stack: 'stack', hashing: 'hashing', recursion: 'recursion', string: 'sliding window' };
+    if (queries[topic]) sendQuick(queries[topic]);
+  }
+}
+
+function sendQuick(text) {
+  document.getElementById('user-input').value = text;
+  sendMessage();
+}
+
+function addMessage(text, role) {
+  if (!chatStarted) {
+    const w = document.getElementById('welcome-screen');
+    if (w) w.remove();
+    chatStarted = true;
+  }
+  const container = document.getElementById('chat-container');
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = `avatar ${role === 'bot' ? 'bot-av' : 'user-av'}`;
+  avatar.textContent = role === 'bot' ? 'D/' : 'U';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = text;
+
+  div.appendChild(avatar);
+  div.appendChild(bubble);
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function showTyping() {
+  const container = document.getElementById('chat-container');
+  const div = document.createElement('div');
+  div.className = 'message bot';
+  div.id = 'typing-indicator';
+  div.innerHTML = `<div class="avatar bot-av">D/</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+function sendMessage() {
+  const input = document.getElementById('user-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  addMessage(text, 'user');
+  input.value = '';
+  input.style.height = 'auto';
+
+  showTyping();
+  setTimeout(() => {
+    removeTyping();
+    const answer = findAnswer(text);
+    const response = answer ? formatAnswer(answer) : fallbackAnswer(text);
+    addMessage(response, 'bot');
+  }, 600 + Math.random() * 400);
+}
+
+// Enter key to send
+document.getElementById('user-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+// Auto resize textarea
+document.getElementById('user-input').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+</script>
+</body>
+</html>
